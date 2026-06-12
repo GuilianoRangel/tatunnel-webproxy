@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tatunnel - Túnel Reverso Simples</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --border: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, var(--bg-color));
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            width: 100%;
+            padding: 2rem 0;
+            text-align: center;
+        }
+        h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: -webkit-linear-gradient(45deg, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        p.subtitle {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-top: 0;
+        }
+        main {
+            flex: 1;
+            width: 90%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        h2 {
+            margin-top: 0;
+            font-size: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+        .downloads {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        a.btn {
+            background: var(--accent);
+            color: #fff;
+            text-decoration: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.2s;
+            display: inline-block;
+        }
+        a.btn:hover {
+            background: var(--accent-hover);
+        }
+        code {
+            background: #1e293b;
+            color: #38bdf8;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .terminal {
+            background: #000;
+            color: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: monospace;
+            overflow-x: auto;
+            border: 1px solid #333;
+        }
+        .terminal-comment { color: #6b7280; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Tatunnel</h1>
+        <p class="subtitle">Exponha suas aplicações locais para a internet em segundos.</p>
+    </header>
+
+    <main>
+        <div class="card">
+            <h2>1. Baixe o Agente (Client)</h2>
+            <p>Faça o download do executável compatível com o seu sistema operacional:</p>
+            <div class="downloads">
+                <a href="/downloads/tatunnel-windows-amd64.exe" class="btn">Windows (x64)</a>
+                <a href="/downloads/tatunnel-linux-amd64" class="btn">Linux (x64)</a>
+                <a href="/downloads/tatunnel-darwin-amd64" class="btn">Mac (Intel)</a>
+                <a href="/downloads/tatunnel-darwin-arm64" class="btn">Mac (Apple Silicon)</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2. Como Utilizar</h2>
+            <p>Abra o seu terminal, navegue até a pasta onde baixou o agente e execute apontando para a sua aplicação local. (Em sistemas Unix, lembre-se de dar permissão com <code>chmod +x</code>).</p>
+            
+            <div class="terminal">
+                <span class="terminal-comment"># Expor aplicação que roda na porta 3000 localmente</span><br>
+                ./tatunnel --url http://localhost:3000 --server https://<span id="domain-placeholder">SEU-DOMINIO</span><br><br>
+                
+                <span class="terminal-comment"># Escolher um subdomínio customizado</span><br>
+                ./tatunnel --url http://localhost:3000 --server https://<span id="domain-placeholder-2">SEU-DOMINIO</span> --subdomain meuteste
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Set dynamic domain text
+        const domain = window.location.hostname;
+        document.getElementById('domain-placeholder').innerText = domain;
+        document.getElementById('domain-placeholder-2').innerText = domain;
+    </script>
+</body>
+</html>

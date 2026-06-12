@@ -26,12 +26,12 @@ O Traefik automaticamente roteará todas as chamadas `*.tatunnel.guiliano.com.br
 
 ## 💻 Como usar o Cliente (Agente Local)
 
-1. Tenha o Go instalado e compile o cliente:
-   ```bash
-   go build -o tatunnel ./cmd/client
-   ```
+1. **Baixe o Agente:**
+   Você não precisa compilar o cliente! Basta acessar a URL base do seu servidor (ex: `https://tatunnel.guiliano.com.br`) pelo navegador e fazer o download do executável compatível com o seu sistema (Windows, Linux ou Mac).
+   
+   *(Caso prefira compilar manualmente, rode `go build -o tatunnel ./cmd/client`)*
 
-2. Execute o agente, apontando a `--url` para o serviço local e `--server` para o Relay recém implantado:
+2. Execute o agente (conceda permissão com `chmod +x tatunnel` se estiver no Linux/Mac), apontando a `--url` para o serviço local e `--server` para o Relay recém implantado:
    ```bash
    ./tatunnel --url http://localhost:3000 --server https://tatunnel.guiliano.com.br
    ```
