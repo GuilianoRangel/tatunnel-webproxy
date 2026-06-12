@@ -2,11 +2,11 @@
 
 Este arquivo servirá como o registro de progresso para a implementação do projeto.
 
-- [ ] **Fase 1: Configuração Inicial e Core**
-  - [ ] Inicializar o módulo Go (`go mod init github.com/user/tatunnel`) no diretório de workspace.
-  - [ ] Estruturar as pastas principais do projeto (`cmd/client`, `cmd/server`, `internal/tunnel`).
-  - [ ] Criar o arquivo de regras e orientações `AGENT.md`.
-  - [ ] Baixar as dependências base (`go get github.com/gorilla/websocket github.com/hashicorp/yamux`).
+- [x] **Fase 1: Configuração Inicial e Core**
+  - [x] Inicializar o módulo Go (`go mod init github.com/user/tatunnel`) no diretório de workspace.
+  - [x] Estruturar as pastas principais do projeto (`cmd/client`, `cmd/server`, `internal/tunnel`).
+  - [x] Criar o arquivo de regras e orientações `AGENT.md`.
+  - [x] Baixar as dependências base (`go get github.com/gorilla/websocket github.com/hashicorp/yamux`).
 
 - [ ] **Fase 2: O Componente Server (Relay)**
   - [ ] Criar a estrutura básica do servidor web (`http.Server`).
