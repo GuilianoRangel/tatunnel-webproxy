@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  tatunnel-server:
+    build: .
+    container_name: tatunnel-server
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - BASE_DOMAIN=${BASE_DOMAIN:-tatunnel.guiliano.com.br}
+    networks:
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      # O router captura tanto o dominio base quanto qualquer subdominio para ele
+      - "traefik.http.routers.tatunnel.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`) || Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+      - "traefik.http.routers.tatunnel.entrypoints=websecure"
+      - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt"
+      - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
+
+networks:
+  dokploy-network:
+    external: true
