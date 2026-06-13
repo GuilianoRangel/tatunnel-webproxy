@@ -12,10 +12,14 @@ services:
       - dokploy-network
     labels:
       - "traefik.enable=true"
-      # O router captura tanto o dominio base quanto qualquer subdominio para ele
-      - "traefik.http.routers.tatunnel.rule=HostRegexp(`{subdomain:[a-z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`) || Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+      # Router para o domínio principal
+      - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
       - "traefik.http.routers.tatunnel.entrypoints=websecure"
       - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt"
+      # Router dedicado para os subdomínios (Wildcard)
+      - "traefik.http.routers.tatunnel-wild.rule=HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+      - "traefik.http.routers.tatunnel-wild.entrypoints=websecure"
+      - "traefik.http.routers.tatunnel-wild.tls.certresolver=letsencrypt"
       - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
 
 networks:

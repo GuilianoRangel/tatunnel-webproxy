@@ -116,6 +116,7 @@ func (c *Client) handleStream(stream net.Conn) {
 
 	req.URL.Scheme = localU.Scheme
 	req.URL.Host = localU.Host
+	req.Host = localU.Host // Força o header Host ser o da aplicação local (evita erros 404 em servidores estritos)
 	req.RequestURI = "" // Obrigatório limpar para o cliente HTTP do Go
 
 	// Fazemos a chamada local sem seguir redirects automaticamente,
