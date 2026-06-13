@@ -34,6 +34,7 @@ services:
       # Serviço interno do tatunnel
       - 'traefik.http.routers.tatunnel.service=tatunnel'
       - 'traefik.http.services.tatunnel.loadbalancer.server.port=8080'
+      - 'traefik.http.services.tatunnel.loadbalancer.passhostheader=true'
 
 networks:
   dokploy-network:
