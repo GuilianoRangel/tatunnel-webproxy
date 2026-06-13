@@ -14,20 +14,26 @@ services:
       - 'traefik.enable=true'
       - 'traefik.docker.network=dokploy-network'
 
+      # Router principal do tatunnel
       - 'traefik.http.routers.tatunnel.rule=Host(`tatunnel.guiliano.com.br`) || HostRegexp(`^[a-zA-Z0-9-]+\.tatunnel\.guiliano\.com\.br$`)'
       - 'traefik.http.routers.tatunnel.entrypoints=websecure'
       - 'traefik.http.routers.tatunnel.tls=true'
       - 'traefik.http.routers.tatunnel.tls.certresolver=letsencrypt-dns'
       - 'traefik.http.routers.tatunnel.priority=100'
 
+      # Certificado wildcard
       - 'traefik.http.routers.tatunnel.tls.domains[0].main=tatunnel.guiliano.com.br'
       - 'traefik.http.routers.tatunnel.tls.domains[0].sans=*.tatunnel.guiliano.com.br'
 
+      # Headers para aplicações atrás do tatunnel, incluindo Dokploy
+      - 'traefik.http.routers.tatunnel.middlewares=tatunnel-headers'
+      - 'traefik.http.middlewares.tatunnel-headers.headers.customrequestheaders.X-Forwarded-Proto=https'
+      - 'traefik.http.middlewares.tatunnel-headers.headers.customrequestheaders.X-Forwarded-Port=443'
+      - 'traefik.http.middlewares.tatunnel-headers.headers.customrequestheaders.X-Forwarded-Ssl=on'
+
+      # Serviço interno do tatunnel
       - 'traefik.http.routers.tatunnel.service=tatunnel'
       - 'traefik.http.services.tatunnel.loadbalancer.server.port=8080'
-
-      - 'traefik.docker.network=dokploy-network'
-      - 'traefik.http.routers.tatunnel.priority=100'
 
 networks:
   dokploy-network:
