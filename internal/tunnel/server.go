@@ -1,13 +1,15 @@
 package tunnel
 
 import (
-	"bufio"
 	"crypto/rand"
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -156,42 +158,24 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Abre um stream dedicado sobre a conexão TCP/WS para esta requisição
-	stream, err := session.Open()
-	if err != nil {
-		log.Printf("Falha ao abrir stream para %s: %v", subdomain, err)
-		http.Error(w, "Erro no túnel", http.StatusBadGateway)
-		return
+	// Utiliza ReverseProxy para suporte completo a WebSockets e SSE
+	proxy := &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			// Definimos scheme e host simbólicos. O tráfego real vai pelo Yamux.
+			req.URL.Scheme = "http"
+			req.URL.Host = "tunnel-client"
+		},
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				// Para cada requisição, abrimos um novo stream no cliente local associado a este subdomínio
+				return session.Open()
+			},
+		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			log.Printf("Falha no proxy para %s: %v", subdomain, err)
+			http.Error(w, "Erro no túnel", http.StatusBadGateway)
+		},
 	}
-	defer stream.Close()
 
-	// Clone a requisição para enviar pelo Yamux
-	req := r.Clone(r.Context())
-	req.RequestURI = "" // Obrigatorio limpar para o req.Write funcionar corretamente
-
-	if err := req.Write(stream); err != nil {
-		log.Printf("Falha ao escrever requisicao no stream: %v", err)
-		http.Error(w, "Erro no envio", http.StatusBadGateway)
-		return
-	}
-
-	// Ler a resposta que o cliente mandou de volta pelo stream
-	resp, err := http.ReadResponse(bufio.NewReader(stream), req)
-	if err != nil {
-		log.Printf("Falha ao ler resposta do stream: %v", err)
-		http.Error(w, "Erro de recepção", http.StatusBadGateway)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Copia Headers
-	for k, vv := range resp.Header {
-		for _, v := range vv {
-			w.Header().Add(k, v)
-		}
-	}
-	w.WriteHeader(resp.StatusCode)
-
-	// Copia Body
-	io.Copy(w, resp.Body)
+	proxy.ServeHTTP(w, r)
 }

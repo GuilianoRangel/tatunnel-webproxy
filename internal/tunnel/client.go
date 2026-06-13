@@ -1,12 +1,11 @@
 package tunnel
 
 import (
-	"bufio"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -27,6 +26,20 @@ func NewClient(serverURL, localURL, subdomain string) *Client {
 		LocalURL:  localURL,
 		Subdomain: subdomain,
 	}
+}
+
+// yamuxListener encapsula uma sessão yamux para satisfazer a interface net.Listener
+type yamuxListener struct {
+	*yamux.Session
+}
+
+func (l *yamuxListener) Accept() (net.Conn, error) {
+	return l.Session.Accept()
+}
+
+func (l *yamuxListener) Addr() net.Addr {
+	// Retorna um endereço dummy pois a conexão já está estabelecida
+	return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0}
 }
 
 // Start inicia a conexão com o servidor na nuvem
@@ -80,70 +93,29 @@ func (c *Client) Start() error {
 	}
 	defer session.Close()
 
-	for {
-		stream, err := session.Accept()
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			log.Printf("Erro ao aceitar stream: %v", err)
-			continue
-		}
-
-		go c.handleStream(stream)
-	}
-
-	return nil
-}
-
-func (c *Client) handleStream(stream net.Conn) {
-	defer stream.Close()
-
-	req, err := http.ReadRequest(bufio.NewReader(stream))
-	if err != nil {
-		if err != io.EOF {
-			log.Printf("Erro ao ler requisição: %v", err)
-		}
-		return
-	}
-
-	// Ajusta a requisição para apontar para a aplicação local
 	localU, err := url.Parse(c.LocalURL)
 	if err != nil {
-		log.Printf("URL local inválida: %v", err)
-		return
+		return fmt.Errorf("URL local inválida: %v", err)
 	}
 
-	req.URL.Scheme = localU.Scheme
-	req.URL.Host = localU.Host
-	req.Host = localU.Host // Força o header Host ser o da aplicação local (evita erros 404 em servidores estritos)
-	req.RequestURI = "" // Obrigatório limpar para o cliente HTTP do Go
+	proxy := httputil.NewSingleHostReverseProxy(localU)
 
-	// Fazemos a chamada local sem seguir redirects automaticamente,
-	// para que o redirect chegue até o browser do usuário.
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
+	// Garante que o Host header enviado para a aplicação local seja o LocalURL.Host original
+	// Essencial para evitar 404 em aplicações que validam o Host
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Host = localU.Host
 	}
 
-	resp, err := client.Do(req)
-	if err != nil {
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("Erro ao acessar app local: %v", err)
-		errorResp := &http.Response{
-			StatusCode: http.StatusBadGateway,
-			ProtoMajor: 1,
-			ProtoMinor: 1,
-			Body:       io.NopCloser(strings.NewReader("502 Bad Gateway: Aplicação local inacessível")),
-			Header:     make(http.Header),
-		}
-		errorResp.Write(stream)
-		return
+		http.Error(w, "502 Bad Gateway: Aplicação local inacessível", http.StatusBadGateway)
 	}
-	defer resp.Body.Close()
 
-	// Escreve a resposta recebida de volta para o túnel
-	if err := resp.Write(stream); err != nil {
-		log.Printf("Erro ao escrever resposta no stream: %v", err)
-	}
+	listener := &yamuxListener{Session: session}
+	log.Printf("Aguardando requisições...")
+
+	// Inicia o servidor HTTP embutido usando nossa sessão Yamux como Listener
+	return http.Serve(listener, proxy)
 }
