@@ -17,7 +17,7 @@ services:
       - "traefik.http.routers.tatunnel.entrypoints=websecure"
       - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt"
       # Router dedicado para os subdomínios (Wildcard)
-      - "traefik.http.routers.tatunnel-wild.rule=HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+      - "traefik.http.routers.tatunnel-wild.rule=Host(`*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
       - "traefik.http.routers.tatunnel-wild.entrypoints=websecure"
       - "traefik.http.routers.tatunnel-wild.tls=true"
       - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
