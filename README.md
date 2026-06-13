@@ -70,3 +70,32 @@ Se quiser testar a arquitetura na sua própria máquina sem depender de internet
    ```
 
 5. Acesse no navegador: `http://meuteste.tatunnel.local:8080`.
+
+---
+
+## 🛠️ Como Compilar o Projeto (Build Manual)
+
+Caso queira modificar o código ou compilar os binários manualmente sem usar o Docker, você precisará ter o **Go 1.22+** instalado na sua máquina.
+
+1. **Baixe as dependências:**
+   ```bash
+   go mod download
+   ```
+
+2. **Compilar o Agente (Client):**
+   Irá gerar um executável chamado `tatunnel` na raiz do projeto.
+   ```bash
+   go build -o tatunnel ./cmd/client
+   ```
+
+3. **Compilar o Servidor (Relay):**
+   Irá gerar um executável chamado `tatunnel-server`.
+   ```bash
+   go build -o tatunnel-server ./cmd/server
+   ```
+
+4. **Compilação Cruzada (Cross-Platform):**
+   Você pode facilmente gerar o executável do cliente para outros sistemas operacionais. Exemplo para gerar o cliente para Windows:
+   ```bash
+   GOOS=windows GOARCH=amd64 go build -o tatunnel.exe ./cmd/client
+   ```
