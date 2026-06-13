@@ -158,7 +158,50 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Utiliza ReverseProxy para suporte completo a WebSockets e SSE
+	// Tratamento especial para WebSockets (Raw TCP Proxy)
+	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+		stream, err := session.Open()
+		if err != nil {
+			log.Printf("Falha ao abrir stream WS para %s: %v", subdomain, err)
+			http.Error(w, "Erro no túnel", http.StatusBadGateway)
+			return
+		}
+		
+		hj, ok := w.(http.Hijacker)
+		if !ok {
+			http.Error(w, "Hijack unsupported", http.StatusInternalServerError)
+			return
+		}
+		conn, brw, err := hj.Hijack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Prepara requisição
+		req := r.Clone(r.Context())
+		req.RequestURI = ""
+		if err := req.Write(stream); err != nil {
+			conn.Close()
+			stream.Close()
+			return
+		}
+
+		// Copia os bytes bidirecionalmente
+		go func() {
+			defer conn.Close()
+			defer stream.Close()
+			io.Copy(stream, brw)
+		}()
+		go func() {
+			defer conn.Close()
+			defer stream.Close()
+			io.Copy(conn, stream)
+		}()
+		return
+	}
+
+	// Utiliza ReverseProxy para requisições HTTP normais e SSE
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
 			// Definimos scheme e host simbólicos. O tráfego real vai pelo Yamux.

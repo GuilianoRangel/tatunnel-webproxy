@@ -113,9 +113,58 @@ func (c *Client) Start() error {
 		http.Error(w, "502 Bad Gateway: Aplicação local inacessível", http.StatusBadGateway)
 	}
 
+	// Handler customizado para interceptar WebSockets
+	proxyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			dialConn, err := net.Dial("tcp", localU.Host)
+			if err != nil {
+				log.Printf("Erro ao conectar no WS local: %v", err)
+				http.Error(w, "App offline", http.StatusBadGateway)
+				return
+			}
+
+			hj, ok := w.(http.Hijacker)
+			if !ok {
+				http.Error(w, "Hijack unsupported", http.StatusInternalServerError)
+				return
+			}
+			conn, brw, err := hj.Hijack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			// Modifica e escreve a requisição
+			req := r.Clone(r.Context())
+			req.Host = localU.Host
+			req.RequestURI = ""
+			if err := req.Write(dialConn); err != nil {
+				conn.Close()
+				dialConn.Close()
+				return
+			}
+
+			// Bidirecional
+			go func() {
+				defer conn.Close()
+				defer dialConn.Close()
+				io.Copy(dialConn, brw)
+			}()
+			go func() {
+				defer conn.Close()
+				defer dialConn.Close()
+				io.Copy(conn, dialConn)
+			}()
+			return
+		}
+
+		// Rota normal HTTP
+		proxy.ServeHTTP(w, r)
+	})
+
 	listener := &yamuxListener{Session: session}
 	log.Printf("Aguardando requisições...")
 
-	// Inicia o servidor HTTP embutido usando nossa sessão Yamux como Listener
-	return http.Serve(listener, proxy)
+	// Inicia o servidor HTTP embutido
+	return http.Serve(listener, proxyHandler)
 }
