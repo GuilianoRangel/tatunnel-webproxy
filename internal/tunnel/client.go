@@ -1,12 +1,12 @@
 package tunnel
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -27,20 +27,6 @@ func NewClient(serverURL, localURL, subdomain string) *Client {
 		LocalURL:  localURL,
 		Subdomain: subdomain,
 	}
-}
-
-// yamuxListener encapsula uma sessão yamux para satisfazer a interface net.Listener
-type yamuxListener struct {
-	*yamux.Session
-}
-
-func (l *yamuxListener) Accept() (net.Conn, error) {
-	return l.Session.Accept()
-}
-
-func (l *yamuxListener) Addr() net.Addr {
-	// Retorna um endereço dummy pois a conexão já está estabelecida
-	return &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: 0}
 }
 
 // Start inicia a conexão com o servidor na nuvem
@@ -99,73 +85,76 @@ func (c *Client) Start() error {
 		return fmt.Errorf("URL local inválida: %v", err)
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(localU)
-
-	// Garante que o Host header enviado para a aplicação local seja o LocalURL.Host original
-	// Essencial para evitar 404 em aplicações que validam o Host
-	originalDirector := proxy.Director
-	proxy.Director = func(req *http.Request) {
-		originalDirector(req)
-		req.Host = localU.Host
-	}
-
-	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
-		log.Printf("Erro ao acessar app local: %v", err)
-		http.Error(w, "502 Bad Gateway: Aplicação local inacessível", http.StatusBadGateway)
-	}
-
-	// Handler customizado para interceptar WebSockets
-	proxyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
-			dialConn, err := net.Dial("tcp", localU.Host)
-			if err != nil {
-				log.Printf("Erro ao conectar no WS local: %v", err)
-				http.Error(w, "App offline", http.StatusBadGateway)
-				return
-			}
-
-			hj, ok := w.(http.Hijacker)
-			if !ok {
-				http.Error(w, "Hijack unsupported", http.StatusInternalServerError)
-				return
-			}
-			conn, brw, err := hj.Hijack()
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			// Modifica e escreve a requisição
-			req := r.Clone(r.Context())
-			req.Host = localU.Host
-			req.RequestURI = ""
-			if err := req.Write(dialConn); err != nil {
-				conn.Close()
-				dialConn.Close()
-				return
-			}
-
-			// Bidirecional
-			go func() {
-				defer conn.Close()
-				defer dialConn.Close()
-				io.Copy(dialConn, brw)
-			}()
-			go func() {
-				defer conn.Close()
-				defer dialConn.Close()
-				io.Copy(conn, dialConn)
-			}()
-			return
-		}
-
-		// Rota normal HTTP
-		proxy.ServeHTTP(w, r)
-	})
-
-	listener := &yamuxListener{Session: session}
 	log.Printf("Aguardando requisições...")
 
-	// Inicia o servidor HTTP embutido
-	return http.Serve(listener, proxyHandler)
+	for {
+		stream, err := session.Accept()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Printf("Erro ao aceitar stream: %v", err)
+			continue
+		}
+		go c.handleStream(stream, localU)
+	}
+
+	return nil
 }
+
+// handleStream processa cada stream vindo do servidor de forma totalmente transparente.
+// Funciona para HTTP, WebSocket, SSE e qualquer protocolo — nenhum byte é modificado
+// além do header Host.
+func (c *Client) handleStream(stream net.Conn, localU *url.URL) {
+	defer stream.Close()
+
+	// Conecta na aplicação local via TCP puro
+	localConn, err := net.Dial("tcp", localU.Host)
+	if err != nil {
+		log.Printf("Erro ao conectar na app local (%s): %v", localU.Host, err)
+		// Tenta enviar uma resposta de erro HTTP antes de fechar
+		errorResp := &http.Response{
+			StatusCode: http.StatusBadGateway,
+			ProtoMajor: 1,
+			ProtoMinor: 1,
+			Body:       io.NopCloser(strings.NewReader("502 Bad Gateway: Aplicação local inacessível")),
+			Header:     make(http.Header),
+		}
+		errorResp.Write(stream)
+		return
+	}
+	defer localConn.Close()
+
+	// Lê a requisição HTTP vinda do servidor (pelo yamux stream)
+	bufReader := bufio.NewReader(stream)
+	req, err := http.ReadRequest(bufReader)
+	if err != nil {
+		if err != io.EOF {
+			log.Printf("Erro ao ler requisição do stream: %v", err)
+		}
+		return
+	}
+
+	// Troca o Host para apontar para a aplicação local
+	req.Host = localU.Host
+	req.RequestURI = ""
+
+	// Encaminha a requisição para a aplicação local
+	if err := req.Write(localConn); err != nil {
+		log.Printf("Erro ao encaminhar requisição para app local: %v", err)
+		return
+	}
+
+	// Copia os bytes bidirecionalmente (transparente para qualquer protocolo)
+	// Direção 1: Dados restantes do servidor -> app local (ex: WebSocket frames do browser)
+	// Direção 2: Resposta da app local -> servidor (ex: HTTP response, 101 Upgrade, WS frames)
+	done := make(chan struct{})
+	go func() {
+		defer func() { done <- struct{}{} }()
+		io.Copy(localConn, bufReader) // Usa bufReader para drenar buffer residual
+	}()
+
+	io.Copy(stream, localConn)
+	<-done
+}
+

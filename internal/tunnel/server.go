@@ -213,7 +213,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				// Para cada requisição, abrimos um novo stream no cliente local associado a este subdomínio
 				return session.Open()
 			},
+			DisableKeepAlives: true, // Fecha o stream yamux após cada resposta
 		},
+		FlushInterval: -1, // Flush imediato para SSE (Server-Sent Events)
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			log.Printf("Falha no proxy para %s: %v", subdomain, err)
 			http.Error(w, "Erro no túnel", http.StatusBadGateway)
