@@ -14,7 +14,7 @@ services:
       - "traefik.enable=true"
 
       # Router Único para domínio principal e subdomínios
-      - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`) || HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+      - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`) || Host(`*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
       - "traefik.http.routers.tatunnel.entrypoints=websecure"
       - "traefik.http.routers.tatunnel.tls=true"
       - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt-dns"
