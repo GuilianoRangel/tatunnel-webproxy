@@ -11,18 +11,23 @@ services:
     networks:
       - dokploy-network
     labels:
-      - "traefik.enable=true"
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=dokploy-network'
 
-      # Router Único para domínio principal e subdomínios
-      - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`) || Host(`*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
-      - "traefik.http.routers.tatunnel.entrypoints=websecure"
-      - "traefik.http.routers.tatunnel.tls=true"
-      - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt-dns"
-      - "traefik.http.routers.tatunnel.tls.domains[0].main=${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
-      - "traefik.http.routers.tatunnel.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
+      - 'traefik.http.routers.tatunnel.rule=Host(`tatunnel.guiliano.com.br`) || HostRegexp(`^[a-zA-Z0-9-]+\.tatunnel\.guiliano\.com\.br$`)'
+      - 'traefik.http.routers.tatunnel.entrypoints=websecure'
+      - 'traefik.http.routers.tatunnel.tls=true'
+      - 'traefik.http.routers.tatunnel.tls.certresolver=letsencrypt-dns'
+      - 'traefik.http.routers.tatunnel.priority=100'
 
-      # Serviço interno
-      - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
+      - 'traefik.http.routers.tatunnel.tls.domains[0].main=tatunnel.guiliano.com.br'
+      - 'traefik.http.routers.tatunnel.tls.domains[0].sans=*.tatunnel.guiliano.com.br'
+
+      - 'traefik.http.routers.tatunnel.service=tatunnel'
+      - 'traefik.http.services.tatunnel.loadbalancer.server.port=8080'
+
+      - 'traefik.docker.network=dokploy-network'
+      - 'traefik.http.routers.tatunnel.priority=100'
 
 networks:
   dokploy-network:
