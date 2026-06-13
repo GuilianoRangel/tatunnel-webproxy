@@ -65,8 +65,9 @@ Se quiser testar a arquitetura na sua própria máquina sem depender de internet
    ```
 
 4. **Inicie o Cliente:**
+   Para testar a validação do domínio, passe a URL local simulada que você acabou de criar no `/etc/hosts`:
    ```bash
-   go run ./cmd/client/main.go --url http://localhost:3000 --server http://localhost:8080 --subdomain meuteste
+   go run ./cmd/client/main.go --url http://localhost:3000 --server http://tatunnel.local:8080 --subdomain meuteste
    ```
 
 5. Acesse no navegador: `http://meuteste.tatunnel.local:8080`.

@@ -130,6 +130,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	host := r.Host
+	if strings.Contains(host, ":") {
+		host = strings.Split(host, ":")[0]
+	}
+
 	if !strings.HasSuffix(host, s.BaseDomain) {
 		http.Error(w, "Dominio Invalido", http.StatusNotFound)
 		return
@@ -138,7 +142,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	subdomain := strings.TrimSuffix(host, "."+s.BaseDomain)
 	if subdomain == host {
 		// Se for exatamente o domínio base, serve a página de downloads e documentação
-		if host == s.BaseDomain || strings.Split(host, ":")[0] == s.BaseDomain {
+		if host == s.BaseDomain {
 			http.FileServer(http.Dir("./public")).ServeHTTP(w, r)
 			return
 		}
