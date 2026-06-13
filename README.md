@@ -59,14 +59,14 @@ Se quiser testar a arquitetura na sua própria máquina sem depender de internet
    go run ./cmd/server/main.go
    ```
 
-3. **Inicie sua aplicação web:**
+3. **Inicie sua aplicação web (em uma porta diferente):**
    ```bash
-   python3 -m http.server 8080
+   python3 -m http.server 3000
    ```
 
 4. **Inicie o Cliente:**
    ```bash
-   go run ./cmd/client/main.go --url http://localhost:8080 --server http://localhost:8080 --subdomain meuteste
+   go run ./cmd/client/main.go --url http://localhost:3000 --server http://localhost:8080 --subdomain meuteste
    ```
 
 5. Acesse no navegador: `http://meuteste.tatunnel.local:8080`.
