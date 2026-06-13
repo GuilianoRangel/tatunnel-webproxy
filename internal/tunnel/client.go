@@ -9,9 +9,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/yamux"
+)
+
+const (
+	maxReconnectAttempts = 3
+	baseReconnectDelay   = 2 * time.Second
 )
 
 // Client representa o agente que roda localmente
@@ -29,11 +35,46 @@ func NewClient(serverURL, localURL, subdomain string) *Client {
 	}
 }
 
-// Start inicia a conexão com o servidor na nuvem
+// Start inicia a conexão com o servidor e reconecta automaticamente em caso de falha.
+// Tenta reconectar até 3 vezes consecutivas. O contador reseta quando a conexão
+// é bem-sucedida e começa a servir requisições.
 func (c *Client) Start() error {
+	attempts := 0
+
+	for {
+		wasConnected, err := c.connect()
+
+		if err == nil {
+			// Conexão encerrou normalmente (EOF limpo), sem necessidade de reconectar.
+			log.Printf("Conexão encerrada normalmente.")
+			return nil
+		}
+
+		// Se a conexão chegou a funcionar, reseta o contador de tentativas.
+		// Isso garante que uma queda eventual após horas de uso tenha retries frescos.
+		if wasConnected {
+			attempts = 0
+		}
+
+		attempts++
+		if attempts > maxReconnectAttempts {
+			return fmt.Errorf("falha após %d tentativas de reconexão: %v", maxReconnectAttempts, err)
+		}
+
+		delay := baseReconnectDelay * time.Duration(1<<(attempts-1)) // backoff exponencial: 2s, 4s, 8s
+		log.Printf("Conexão perdida: %v", err)
+		log.Printf("Tentando reconexão %d/%d em %v...", attempts, maxReconnectAttempts, delay)
+		time.Sleep(delay)
+	}
+}
+
+// connect realiza uma única tentativa de conexão com o servidor.
+// Retorna (wasConnected, err): wasConnected indica se a sessão chegou a servir
+// requisições antes de cair. err é nil em caso de encerramento limpo (EOF).
+func (c *Client) connect() (bool, error) {
 	u, err := url.Parse(c.ServerURL)
 	if err != nil {
-		return err
+		return false, err
 	}
 	u.Path = "/connect"
 	if c.Subdomain != "" {
@@ -48,19 +89,19 @@ func (c *Client) Start() error {
 
 	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	if err != nil {
-		return fmt.Errorf("falha ao conectar no servidor: %v", err)
+		return false, fmt.Errorf("falha ao conectar no servidor: %v", err)
 	}
 	defer ws.Close()
 
 	// Aguarda handshake de confirmação do servidor
 	_, msg, err := ws.ReadMessage()
 	if err != nil {
-		return fmt.Errorf("falha no handshake: %v", err)
+		return false, fmt.Errorf("falha no handshake: %v", err)
 	}
 
 	msgStr := string(msg)
 	if strings.HasPrefix(msgStr, "ERROR:") {
-		return fmt.Errorf("servidor recusou: %s", msgStr)
+		return false, fmt.Errorf("servidor recusou: %s", msgStr)
 	}
 
 	if strings.HasPrefix(msgStr, "CONNECTED:") {
@@ -76,30 +117,40 @@ func (c *Client) Start() error {
 	// Cliente inicia o Yamux Server (ele escuta os streams abertos pelo cloud server)
 	session, err := yamux.Server(conn, nil)
 	if err != nil {
-		return fmt.Errorf("falha ao iniciar yamux: %v", err)
+		return false, fmt.Errorf("falha ao iniciar yamux: %v", err)
 	}
 	defer session.Close()
 
 	localU, err := url.Parse(c.LocalURL)
 	if err != nil {
-		return fmt.Errorf("URL local inválida: %v", err)
+		return false, fmt.Errorf("URL local inválida: %v", err)
 	}
 
 	log.Printf("Aguardando requisições...")
+
+	// Marca que a conexão está ativa — reseta o contador de reconexão
+	connected := false
 
 	for {
 		stream, err := session.Accept()
 		if err != nil {
 			if err == io.EOF {
-				break
+				// Encerramento limpo
+				return connected, nil
+			}
+			// Erros fatais de sessão (ex: keepalive timeout) — sai do loop para reconectar
+			if session.IsClosed() || strings.Contains(err.Error(), "keepalive") {
+				return connected, fmt.Errorf("sessão encerrada: %v", err)
 			}
 			log.Printf("Erro ao aceitar stream: %v", err)
 			continue
 		}
+
+		if !connected {
+			connected = true
+		}
 		go c.handleStream(stream, localU)
 	}
-
-	return nil
 }
 
 // handleStream processa cada stream vindo do servidor de forma totalmente transparente.
