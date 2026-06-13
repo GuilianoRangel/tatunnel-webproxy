@@ -223,6 +223,7 @@ labels:
   - "traefik.http.routers.tatunnel-wild.tls.certresolver=letsencrypt"
   - "traefik.http.routers.tatunnel-wild.tls.domains[0].main=${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
   - "traefik.http.routers.tatunnel-wild.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
+  - "traefik.http.routers.tatunnel-wild.service=tatunnel"
 
   # Serviço interno
   - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
@@ -274,6 +275,7 @@ services:
       - "traefik.http.routers.tatunnel-wild.tls.certresolver=letsencrypt"
       - "traefik.http.routers.tatunnel-wild.tls.domains[0].main=${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
       - "traefik.http.routers.tatunnel-wild.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
+      - "traefik.http.routers.tatunnel-wild.service=tatunnel"
 
       # Serviço interno
       - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
