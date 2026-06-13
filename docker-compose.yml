@@ -22,7 +22,7 @@ services:
       - "traefik.http.routers.tatunnel.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
 
       # Subdomínios dinâmicos
-      - "traefik.http.routers.tatunnel-wild.rule=HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+      - "traefik.http.routers.tatunnel-wild.rule=HostRegexp(`{host:.+}`)"
       - "traefik.http.routers.tatunnel-wild.entrypoints=websecure"
       - "traefik.http.routers.tatunnel-wild.tls=true"
       - "traefik.http.routers.tatunnel-wild.tls.certresolver=letsencrypt-dns"
