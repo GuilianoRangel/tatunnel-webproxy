@@ -208,22 +208,13 @@ No serviço da aplicação, configure as labels do Traefik da seguinte forma:
 labels:
   - "traefik.enable=true"
 
-  # Domínio principal
-  - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+  # Router Único para domínio principal e subdomínios
+  - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`) || HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
   - "traefik.http.routers.tatunnel.entrypoints=websecure"
   - "traefik.http.routers.tatunnel.tls=true"
-  - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt"
+  - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt-dns"
   - "traefik.http.routers.tatunnel.tls.domains[0].main=${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
   - "traefik.http.routers.tatunnel.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
-
-  # Subdomínios dinâmicos
-  - "traefik.http.routers.tatunnel-wild.rule=HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
-  - "traefik.http.routers.tatunnel-wild.entrypoints=websecure"
-  - "traefik.http.routers.tatunnel-wild.tls=true"
-  - "traefik.http.routers.tatunnel-wild.tls.certresolver=letsencrypt"
-  - "traefik.http.routers.tatunnel-wild.tls.domains[0].main=${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
-  - "traefik.http.routers.tatunnel-wild.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
-  - "traefik.http.routers.tatunnel-wild.service=tatunnel"
 
   # Serviço interno
   - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
@@ -260,22 +251,13 @@ services:
     labels:
       - "traefik.enable=true"
 
-      # Domínio principal
-      - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
+      # Router Único para domínio principal e subdomínios
+      - "traefik.http.routers.tatunnel.rule=Host(`${BASE_DOMAIN:-tatunnel.guiliano.com.br}`) || HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
       - "traefik.http.routers.tatunnel.entrypoints=websecure"
       - "traefik.http.routers.tatunnel.tls=true"
-      - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.tatunnel.tls.certresolver=letsencrypt-dns"
       - "traefik.http.routers.tatunnel.tls.domains[0].main=${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
       - "traefik.http.routers.tatunnel.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
-
-      # Subdomínios dinâmicos
-      - "traefik.http.routers.tatunnel-wild.rule=HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.${BASE_DOMAIN:-tatunnel.guiliano.com.br}`)"
-      - "traefik.http.routers.tatunnel-wild.entrypoints=websecure"
-      - "traefik.http.routers.tatunnel-wild.tls=true"
-      - "traefik.http.routers.tatunnel-wild.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.tatunnel-wild.tls.domains[0].main=${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
-      - "traefik.http.routers.tatunnel-wild.tls.domains[0].sans=*.${BASE_DOMAIN:-tatunnel.guiliano.com.br}"
-      - "traefik.http.routers.tatunnel-wild.service=tatunnel"
 
       # Serviço interno
       - "traefik.http.services.tatunnel.loadbalancer.server.port=8080"
