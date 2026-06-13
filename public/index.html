@@ -107,6 +107,36 @@
             border: 1px solid #333;
         }
         .terminal-comment { color: #6b7280; }
+        .param-title {
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        .param-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+            font-size: 0.95rem;
+        }
+        .param-table th, .param-table td {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .param-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+        .param-table td code {
+            font-size: 0.9em;
+        }
+        .param-table tr:last-child td {
+            border-bottom: none;
+        }
     </style>
 </head>
 <body>
@@ -138,6 +168,38 @@
                 <span class="terminal-comment"># Escolher um subdomínio customizado</span><br>
                 ./tatunnel --url http://localhost:3000 --server https://<span id="domain-placeholder-2">SEU-DOMINIO</span> --subdomain meuteste
             </div>
+
+            <div class="param-title">Parâmetros do Comando</div>
+            <table class="param-table">
+                <thead>
+                    <tr>
+                        <th>Parâmetro</th>
+                        <th>Descrição</th>
+                        <th>Padrão</th>
+                        <th>Obrigatório</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>--url</code></td>
+                        <td>A URL da sua aplicação local que deseja expor (ex: <code>http://localhost:3000</code>).</td>
+                        <td><code>http://localhost:8080</code></td>
+                        <td>Sim</td>
+                    </tr>
+                    <tr>
+                        <td><code>--server</code></td>
+                        <td>A URL do servidor do Tatunnel que gerencia os túneis.</td>
+                        <td><code>http://localhost:8080</code></td>
+                        <td>Sim</td>
+                    </tr>
+                    <tr>
+                        <td><code>--subdomain</code></td>
+                        <td>O subdomínio personalizado desejado (ex: <code>meuteste</code> para ter <code>meuteste.seudominio</code>). Se não for informado, um subdomínio aleatório será gerado.</td>
+                        <td><em>Nenhum (gerado aleatoriamente)</em></td>
+                        <td>Não</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </main>
 
