@@ -135,8 +135,9 @@ func (c *Client) handleStream(stream net.Conn, localU *url.URL) {
 		return
 	}
 
-	// Troca o Host para apontar para a aplicação local
-	req.Host = localU.Host
+	// Preserva o Host original da requisição (ex: app.tatunnel.guiliano.com.br)
+	// para que proxies internos (como o Traefik do Dokploy) consigam rotear corretamente.
+	// NÃO sobrescrever req.Host com localU.Host!
 	req.RequestURI = ""
 
 	// Encaminha a requisição para a aplicação local

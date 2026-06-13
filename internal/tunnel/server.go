@@ -178,9 +178,19 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Prepara requisição
+		// Prepara requisição preservando o Host original e adicionando X-Forwarded
 		req := r.Clone(r.Context())
 		req.RequestURI = ""
+		if req.Header.Get("X-Forwarded-Host") == "" {
+			req.Header.Set("X-Forwarded-Host", r.Host)
+		}
+		if req.Header.Get("X-Forwarded-Proto") == "" {
+			proto := "http"
+			if r.TLS != nil {
+				proto = "https"
+			}
+			req.Header.Set("X-Forwarded-Proto", proto)
+		}
 		if err := req.Write(stream); err != nil {
 			conn.Close()
 			stream.Close()
@@ -204,9 +214,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Utiliza ReverseProxy para requisições HTTP normais e SSE
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
-			// Definimos scheme e host simbólicos. O tráfego real vai pelo Yamux.
+			// Preserva o Host original do browser
 			req.URL.Scheme = "http"
 			req.URL.Host = "tunnel-client"
+			// Adiciona headers X-Forwarded se não existirem
+			if req.Header.Get("X-Forwarded-Host") == "" {
+				req.Header.Set("X-Forwarded-Host", req.Host)
+			}
+			if req.Header.Get("X-Forwarded-Proto") == "" {
+				proto := "http"
+				if r.TLS != nil {
+					proto = "https"
+				}
+				req.Header.Set("X-Forwarded-Proto", proto)
+			}
 		},
 		Transport: &http.Transport{
 			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
